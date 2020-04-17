@@ -76,6 +76,25 @@ async function doTry(transactionID) {
 	}
 }
 
+async function registerTasks(transactionID, tasks) {
+
+	console.log('Register taskss ...');
+
+	let res = await fetch(twistHost + '/api/transactions/' + transactionID, {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			tasks: tasks,
+		})
+	});
+
+	let data = await res.json();
+	if (!data.success)
+		throw new Error('Failed to register');
+}
+
 async function doConfirm(transactionID) {
 
 	console.log('Entering CONFIRM phase ...');
@@ -86,7 +105,6 @@ async function doConfirm(transactionID) {
 			'Content-Type': 'application/json'
 		},
 		body: JSON.stringify({
-			tasks: tasks,
 		})
 	});
 
@@ -99,18 +117,15 @@ async function doCancel(transactionID) {
 
 	console.log('Entering Cancel phase');
 
-	try {
-		let actions = tasks.map(async () => {
-			await fetch(twistHost + '/api/transactions/' + transactionID, {
-				method: 'DELETE'
-			});
-		});
+	let res = await fetch(twistHost + '/api/transactions/' + transactionID, {
+		method: 'DELETE'
+	});
 
-		await Promise.all(actions);
+	let data = await res.json();
+	if (!data.success)
+		throw new Error('Failed to cancel');
 
-	} catch(e) {
-		throw e;
-	}
+	console.log('Transaction was canceled successfully');
 }
 
 async function getWalletInfo() {
@@ -149,6 +164,14 @@ async function getWalletInfo() {
 	} catch(e) {
 		console.log('Failed to try, so cancel all');
 		await doCancel(transactionID);
+		return;
+	}
+
+	// Register tasks
+	try {
+		await registerTasks(transactionID, tasks);
+	} catch(e) {
+		console.log('Failed to register tasks');
 		return;
 	}
 
