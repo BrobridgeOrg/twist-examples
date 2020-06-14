@@ -1,18 +1,15 @@
 const Router = require('koa-router');
 const Data = require('./Data');
+const TaskState = require('./task-state');
 
 const serviceHost = 'http://127.0.0.1:3000';
 
 const router = module.exports = new Router({
-	prefix: '/api'
+	prefix: '/api/v1'
 });
 
 // Try
 router.post('/deduct', async (ctx, next) => {
-
-	if (!ctx.headers['twist-transaction-id']) {
-		ctx.throw(400, 'Required transaction ID');
-	}
 
 	if (!ctx.request.body.user) {
 		ctx.throw(400, 'Required user');
@@ -22,135 +19,108 @@ router.post('/deduct', async (ctx, next) => {
 		ctx.throw(400, 'Required balance');
 	}
 
-	// Prepare a transaction
-	let transaction = {
-		id: ctx.headers['twist-transaction-id'],
+	// Prepare a task state
+	let taskState = {
 		user: ctx.request.body.user,
 		balance: ctx.request.body.balance,
-		status: 'TRY',
 	};
 
-	// Check user
-	if (!Data.wallet.hasOwnProperty(transaction.user)) {
+	// Check user whether does exists or not
+	let user = Data.accounts[taskState.user];
+	if (!user) {
 		ctx.throw(400, 'no such user');
 	}
 
-	// Get reserved balances
-	let reserved = Data.reserved[transaction.user] || 0;
-
 	// Check balances
-	let balance = Data.wallet[transaction.user];
-	if (balance - reserved < transaction.balance) {
+	if (user.balance - user.reserved < taskState.balance) {
 		ctx.throw(400, 'Balance in wallet is not engough');
 	}
 
-	// Store this transaction record
-	Data.transactions.deduct[transaction.id] = transaction
-
 	// Do reserved
-	Data.reserved[transaction.user] = reserved + transaction.balance;
+	user.reserved += taskState.balance;
 
-	// TODO: set up timer for timeout mechanism
+	// Create task to manage lifecycle and state of this task
+	let taskResponse;
+	try {
+		taskResponse = await TaskState.CreateTask({
+
+			// Actions for confirm and cancel
+			actions: {
+				confirm: {
+					type: 'rest',
+					method: 'put',
+					uri: serviceHost + '/api/v1/deduct'
+				},
+				cancel: {
+					type: 'rest',
+					method: 'delete',
+					uri: serviceHost + '/api/v1/deduct'
+				}
+			},
+			payload: JSON.stringify(taskState)
+		})
+	} catch(e) {
+		console.log(e)
+		ctx.throw(500, 'Failed to create task state')
+	}
 
 	// Response
-	ctx.body = {
-		transactionID: transaction.id,
-		actions: {
-			confirm: {
-				type: 'rest',
-				method: 'put',
-				uri: serviceHost + '/api/deduct'
-			},
-			cancel: {
-				type: 'rest',
-				method: 'delete',
-				uri: serviceHost + '/api/deduct'
-			}
-		},
-		expires: Date.now() + (30 * 1000), // should be done in 30 seconds
-	};
+	ctx.body = taskResponse;
 });
 
 // Confirm
 router.put('/deduct', async (ctx, next) => {
 
-	if (!ctx.headers['twist-transaction-id']) {
-		ctx.throw(400, 'Required transaction ID');
+	if (!ctx.headers['twist-task-id']) {
+		ctx.throw(400, 'Required task ID');
 	}
 
-	// Get this transaction information from Database
-	let transaction = Data.transactions.deduct[ctx.headers['twist-transaction-id']];
-	if (!transaction) {
-		ctx.throw(400, 'No such transaction')
-	}
+	try {
+		// Getting task state
+		let task = await TaskState.GetTask(ctx.headers['twist-task-id']);
+		let taskState = JSON.parse(task.payload);
 
-	// Pre-confirm phase
-	if (ctx.request.body.phase == 'pre-confirm') {
+		// Execute
+		let user = Data.accounts[taskState.user];
+		user.balance -= taskState.balance;
+		user.reserved -= taskState.balance;
 
-		// Do nothing if not in the right phase
-		if (transaction.status != 'TRY') {
-			ctx.throw(202)
-		}
-
-		// Update transaction status
-		transaction.status = 'PRE-CONFIRM';
-
-		// TODO: Set up a timer for this tranasction
-
+		// Response
 		ctx.body = {
-			transactionID: transaction.id,
+			user: taskState.user,
+			wallet: user.balance,
 		};
 
-		return;
+	} catch(e) {
+		ctx.throw(404)
 	}
-
-	// Do nothing if not in the right phase
-	if (transaction.status != 'PRE-CONFIRM') {
-		ctx.throw(202)
-	}
-
-	// TODO: stop timer
-
-	// Update transaction status
-	transaction.status = 'CONFIRM';
-
-	// Execute
-	Data.wallet[transaction.user] -= transaction.balance;
-	Data.reserved[transaction.user] -= transaction.balance;
-
-	// Update transaction status
-	transaction.status = 'SUCCESS';
-
-	ctx.body = {
-		transactionID: transaction.id,
-		user: transaction.user,
-		wallet: Data.wallet[transaction.user]
-	};
 });
 
 // Cancel
 router.delete('/deduct', async (ctx, next) => {
 
-	if (!ctx.headers['twist-transaction-id']) {
-		ctx.throw(400, 'Required transaction ID');
+	if (!ctx.headers['twist-task-id']) {
+		ctx.throw(400, 'Required task ID');
 	}
 
-	// Get this transaction information from Database
-	let transaction = Data.transactions.deduct[ctx.headers['twist-transaction-id']];
-	if (!transaction) {
-		ctx.throw(400, 'No such transaction')
-	}
+	try {
+		// Getting task state
+		let task = await TaskState.GetTask(ctx.headers['twist-task-id']);
+		let taskState = JSON.parse(task.payload);
 
-	if (transaction.status == 'PRE-CONFIRM') {
-		// TODO: stop timer
+		if (task.status === 'CONFIRMED') {
+			// rollback if confirmed already
+			user.balance += taskState.balance;
+		} else {
+			// release reserved resources
+			user.reserved -= taskState.balance;
+		}
 
-		// update transaction status
-		transaction.status = 'CANCELED';
-	} else if (transaction.status == 'TRY') {
-		// update transaction status
-		transaction.status = 'CANCELED';
-	} else {
-		ctx.throw(400, 'Transaction cannot be canceled');
+		// Cancel task
+		await TaskState.CancelTask(ctx.headers['twist-task-id']);
+
+	} catch(e) {
+		ctx.throw(404)
 	}
 
 	ctx.body = {};

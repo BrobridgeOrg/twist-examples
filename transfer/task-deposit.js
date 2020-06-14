@@ -1,144 +1,124 @@
 const Router = require('koa-router');
 const Data = require('./Data');
+const TaskState = require('./task-state');
 
 const serviceHost = 'http://127.0.0.1:3000';
 
 const router = module.exports = new Router({
-	prefix: '/api'
+	prefix: '/api/v1'
 });
 
-// Try
 router.post('/deposit', async (ctx, next) => {
 
-	if (!ctx.headers['twist-transaction-id']) {
-		ctx.throw(400, 'Required transaction ID');
-	}
+	switch(ctx.headers['twist-phrase']) {
+		case 'confirm':
 
-	if (!ctx.request.body.user) {
-		ctx.throw(400, 'Required user');
-	}
-
-	if (!ctx.request.body.balance && ctx.request.body.balance > 0) {
-		ctx.throw(400, 'Required balance');
-	}
-
-	// Prepare a transaction
-	let transaction = {
-		id: ctx.headers['twist-transaction-id'],
-		user: ctx.request.body.user,
-		balance: ctx.request.body.balance,
-		status: 'TRY',
-	};
-
-	// Check user
-	if (!Data.wallet.hasOwnProperty(transaction.user)) {
-		ctx.throw(400, 'no such user');
-	}
-
-	// Store this transaction record
-	Data.transactions.deposit[transaction.id] = transaction
-
-	// TODO: set up timer for timeout mechanism
-
-	// Response
-	ctx.body = {
-		transactionID: transaction.id,
-		actions: {
-			confirm: {
-				type: 'rest',
-				method: 'put',
-				uri: serviceHost + '/api/deposit'
-			},
-			cancel: {
-				type: 'rest',
-				method: 'delete',
-				uri: serviceHost + '/api/deposit'
+			console.log('CONFIRM');
+			if (!ctx.headers['twist-task-id']) {
+				ctx.throw(400, 'Required task ID');
 			}
-		},
-		expires: Date.now() + (30 * 1000), // should be done in 30 seconds
-	};
-});
 
-// Confirm
-router.put('/deposit', async (ctx, next) => {
+			try {
+				// Getting task state
+				let task = await TaskState.GetTask(ctx.headers['twist-task-id']);
+				let taskState = JSON.parse(task.payload);
 
-	if (!ctx.headers['twist-transaction-id']) {
-		ctx.throw(400, 'Required transaction ID');
+				// Execute
+				let user = Data.accounts[taskState.user];
+				user.balance += taskState.balance;
+
+				// Response
+				ctx.body = {
+					user: taskState.user,
+					wallet: user.balance,
+				};
+
+			} catch(e) {
+				console.log(e);
+				ctx.throw(404)
+			}
+
+			break;
+
+		case 'cancel':
+
+			console.log('CANCEL');
+			if (!ctx.headers['twist-task-id']) {
+				ctx.throw(400, 'Required task ID');
+			}
+
+			try {
+				// Getting task state
+				let task = await TaskState.GetTask(ctx.headers['twist-task-id']);
+				let taskState = JSON.parse(task.payload);
+
+				// rollback if confirmed already
+				if (task.status === 'CONFIRMED') {
+					let user = Data.accounts[taskState.user];
+					user.balance -= taskState.balance;
+				}
+
+				// Cancel task
+				await TaskState.CancelTask(ctx.headers['twist-task-id']);
+
+			} catch(e) {
+				console.log(e);
+				ctx.throw(404)
+			}
+
+			ctx.body = {};
+			break;
+
+		default:
+
+			console.log('TRY');
+
+			if (!ctx.request.body.user) {
+				ctx.throw(400, 'Required user');
+			}
+
+			if (!ctx.request.body.balance && ctx.request.body.balance > 0) {
+				ctx.throw(400, 'Required balance');
+			}
+
+			// Prepare a task
+			let taskState = {
+				user: ctx.request.body.user,
+				balance: ctx.request.body.balance,
+			};
+
+			// Check user
+			let user = Data.accounts[taskState.user];
+			if (!user) {
+				ctx.throw(400, 'no such user');
+			}
+
+			// Create task to manage lifecycle and state of this task
+			let taskResponse;
+			try {
+				taskResponse = await TaskState.CreateTask({
+
+					// Actions for confirm and cancel
+					actions: {
+						confirm: {
+							type: 'rest',
+							method: 'post',
+							uri: serviceHost + '/api/v1/deposit'
+						},
+						cancel: {
+							type: 'rest',
+							method: 'post',
+							uri: serviceHost + '/api/v1/deposit'
+						}
+					},
+					payload: JSON.stringify(taskState)
+				})
+			} catch(e) {
+				console.log(e)
+				ctx.throw(500, 'Failed to create task state')
+			}
+
+			// Response
+			ctx.body = taskResponse;
 	}
-
-	// Get this transaction information from Database
-	let transaction = Data.transactions.deposit[ctx.headers['twist-transaction-id']];
-	if (!transaction) {
-		ctx.throw(400, 'No such transaction')
-	}
-
-	// Pre-confirm phase
-	if (ctx.request.body.phase == 'pre-confirm') {
-
-		// Do nothing if not in the right phase
-		if (transaction.status != 'TRY') {
-			ctx.throw(202)
-		}
-
-		// Update transaction status
-		transaction.status = 'PRE-CONFIRM';
-
-		// TODO: Set up a timer for this tranasction
-
-		ctx.body = {
-			transactionID: transaction.id,
-		};
-
-		return;
-	}
-
-	// Do nothing if not in the right phase
-	if (transaction.status != 'PRE-CONFIRM') {
-		ctx.throw(202)
-	}
-
-	// TODO: stop timer
-
-	// Update transaction status
-	transaction.status = 'CONFIRM';
-
-	// Execute
-	Data.wallet[transaction.user] += transaction.balance;
-
-	// Update transaction status
-	transaction.status = 'SUCCESS';
-
-	ctx.body = {
-		transactionID: transaction.id,
-		user: transaction.user,
-		wallet: Data.wallet[transaction.user]
-	};
-});
-
-// Cancel
-router.delete('/deposit', async (ctx, next) => {
-
-	if (!ctx.headers['twist-transaction-id']) {
-		ctx.throw(400, 'Required transaction ID');
-	}
-
-	// Get this transaction information from Database
-	let transaction = Data.transactions.deposit[ctx.headers['twist-transaction-id']];
-	if (!transaction) {
-		ctx.throw(400, 'No such transaction')
-	}
-
-	if (transaction.status == 'PRE-CONFIRM') {
-		// TODO: stop timer
-
-		// update transaction status
-		transaction.status = 'CANCELED';
-	} else if (transaction.status == 'TRY') {
-		// update transaction status
-		transaction.status = 'CANCELED';
-	} else {
-		ctx.throw(400, 'Transaction cannot be canceled');
-	}
-
-	ctx.body = {};
 });

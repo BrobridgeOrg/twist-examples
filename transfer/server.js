@@ -1,37 +1,39 @@
 const Koa = require('koa');
 const Router = require('koa-router');
 const bodyParser = require('koa-bodyparser')
+const Data = require('./Data');
+
+// Initializing database
+const createAccount = function(username, initialBalance) {
+	Data.accounts[username] = {
+		balance: initialBalance,
+		reserved: 0,
+	};
+}
+
+// Create two accounts for testing
+createAccount('fred', 5000);
+createAccount('armani', 1000);
 
 const app = new Koa();
 
-app.use(bodyParser())
-/*
-// Logging
 app.use(async (ctx, next) => {
-  await next();
-  const rt = ctx.response.get('X-Response-Time');
-  console.log(`${ctx.method} ${ctx.url} - ${rt}`);
-});
+	res = await next();
 
-// x-response-time
-app.use(async (ctx, next) => {
-  const start = Date.now();
-  await next();
-  const ms = Date.now() - start;
-  ctx.set('X-Response-Time', `${ms}ms`);
-});
-*/
+	console.log(ctx.response.status, ctx.request.method, ctx.request.url);
+})
+app.use(bodyParser())
+
 // Load APIs
 const deduct = require('./task-deduct');
 const deposit = require('./task-deposit');
 
 const api = new Router({
-	prefix: '/api'
+	prefix: '/api/v1'
 })
 
-const Data = require('./Data');
-api.get('/wallet', async (ctx, next) => {
-	ctx.body = Data.wallet;
+api.get('/wallets', async (ctx, next) => {
+	ctx.body = Data.accounts;
 });
 
 app

@@ -8,12 +8,16 @@ const tasks = [];
 async function createTransaction() {
 
 	// Create a transaction
-	let res = await fetch(twistHost + '/api/transactions', {
-		method: 'POST'
+	let res = await fetch(twistHost + '/api/v1/transactions', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({})
 	});
 
 	let data = await res.json()
-
+console.log(data);
 	return data.transactionID;
 }
 
@@ -24,7 +28,7 @@ async function doTry(transactionID) {
 	// Debit
 	try {
 		console.log('  *', 'deduct 100 from fred')
-		let res = await fetch(serviceHost + '/api/deduct', {
+		let res = await fetch(serviceHost + '/api/v1/deduct', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -51,7 +55,7 @@ async function doTry(transactionID) {
 	// Credit
 	try {
 		console.log('  *', 'deposit 100 to armani\'s wallet')
-		let res = await fetch(serviceHost + '/api/deposit', {
+		let res = await fetch(serviceHost + '/api/v1/deposit', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -80,7 +84,7 @@ async function registerTasks(transactionID, tasks) {
 
 	console.log('Register taskss ...');
 
-	let res = await fetch(twistHost + '/api/transactions/' + transactionID, {
+	let res = await fetch(twistHost + '/api/v1/transactions/' + transactionID, {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json'
@@ -99,7 +103,7 @@ async function doConfirm(transactionID) {
 
 	console.log('Entering CONFIRM phase ...');
 
-	let res = await fetch(twistHost + '/api/transactions/' + transactionID, {
+	let res = await fetch(twistHost + '/api/v1/transactions/' + transactionID, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json'
@@ -117,7 +121,7 @@ async function doCancel(transactionID) {
 
 	console.log('Entering Cancel phase');
 
-	let res = await fetch(twistHost + '/api/transactions/' + transactionID, {
+	let res = await fetch(twistHost + '/api/v1/transactions/' + transactionID, {
 		method: 'DELETE'
 	});
 
@@ -130,7 +134,7 @@ async function doCancel(transactionID) {
 
 async function getWalletInfo() {
 
-	let res = await fetch(serviceHost + '/api/wallet');
+	let res = await fetch(serviceHost + '/api/v1/wallets');
 	let data = await res.json();
 
 	return data;
