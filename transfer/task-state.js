@@ -5,8 +5,6 @@ const twistHost = 'http://127.0.0.1:45555';
 async function CreateTask(task) {
 
 	try {
-		console.log('  *', 'create task state')
-
 		let res = await fetch(twistHost + '/api/v1/tasks', {
 			method: 'POST',
 			headers: {
@@ -29,8 +27,6 @@ async function CreateTask(task) {
 async function GetTask(taskID) {
 
 	try {
-		console.log('  *', 'get task state')
-
 		let res = await fetch(twistHost + '/api/v1/tasks/' + taskID, {
 			method: 'GET',
 			headers: {
@@ -50,8 +46,6 @@ async function GetTask(taskID) {
 async function CancelTask(taskID) {
 
 	try {
-		console.log('  *', 'cancel task state')
-
 		let res = await fetch(twistHost + '/api/v1/tasks/' + taskID, {
 			method: 'DELETE',
 			headers: {

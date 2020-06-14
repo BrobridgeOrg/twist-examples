@@ -107,17 +107,15 @@ router.delete('/deduct', async (ctx, next) => {
 		// Getting task state
 		let task = await TaskState.GetTask(ctx.headers['twist-task-id']);
 		let taskState = JSON.parse(task.payload);
+		let user = Data.accounts[taskState.user];
 
-		if (task.status === 'CONFIRMED') {
+		if (task.status == 'CONFIRMED') {
 			// rollback if confirmed already
 			user.balance += taskState.balance;
 		} else {
 			// release reserved resources
 			user.reserved -= taskState.balance;
 		}
-
-		// Cancel task
-		await TaskState.CancelTask(ctx.headers['twist-task-id']);
 
 	} catch(e) {
 		ctx.throw(404)

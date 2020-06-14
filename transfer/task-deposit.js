@@ -13,7 +13,6 @@ router.post('/deposit', async (ctx, next) => {
 	switch(ctx.headers['twist-phrase']) {
 		case 'confirm':
 
-			console.log('CONFIRM');
 			if (!ctx.headers['twist-task-id']) {
 				ctx.throw(400, 'Required task ID');
 			}
@@ -42,7 +41,6 @@ router.post('/deposit', async (ctx, next) => {
 
 		case 'cancel':
 
-			console.log('CANCEL');
 			if (!ctx.headers['twist-task-id']) {
 				ctx.throw(400, 'Required task ID');
 			}
@@ -58,9 +56,6 @@ router.post('/deposit', async (ctx, next) => {
 					user.balance -= taskState.balance;
 				}
 
-				// Cancel task
-				await TaskState.CancelTask(ctx.headers['twist-task-id']);
-
 			} catch(e) {
 				console.log(e);
 				ctx.throw(404)
@@ -70,8 +65,6 @@ router.post('/deposit', async (ctx, next) => {
 			break;
 
 		default:
-
-			console.log('TRY');
 
 			if (!ctx.request.body.user) {
 				ctx.throw(400, 'Required user');
