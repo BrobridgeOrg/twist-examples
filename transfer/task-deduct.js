@@ -57,7 +57,8 @@ router.post('/deduct', async (ctx, next) => {
 					uri: serviceHost + '/api/v1/deduct'
 				}
 			},
-			payload: JSON.stringify(taskState)
+			payload: JSON.stringify(taskState),
+			timeout: 30000,
 		})
 	} catch(e) {
 		console.log(e)

@@ -13,11 +13,13 @@ async function createTransaction() {
 		headers: {
 			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({})
+		body: JSON.stringify({
+			timeout: 30000,
+		})
 	});
 
 	let data = await res.json()
-console.log(data);
+
 	return data.transactionID;
 }
 
