@@ -1,6 +1,6 @@
 const Router = require('koa-router');
 const Data = require('./Data');
-const TaskState = require('./task-state');
+const Twist = require('./twist');
 
 const serviceHost = 'http://127.0.0.1:3000';
 
@@ -19,7 +19,7 @@ router.post('/deposit', async (ctx, next) => {
 
 			try {
 				// Getting task state
-				let task = await TaskState.GetTask(ctx.headers['twist-task-id']);
+				let task = await Twist.GetTask(ctx.headers['twist-task-id']);
 				let taskState = JSON.parse(task.payload);
 
 				// Execute
@@ -47,7 +47,7 @@ router.post('/deposit', async (ctx, next) => {
 
 			try {
 				// Getting task state
-				let task = await TaskState.GetTask(ctx.headers['twist-task-id']);
+				let task = await Twist.GetTask(ctx.headers['twist-task-id']);
 				let taskState = JSON.parse(task.payload);
 
 				// rollback if confirmed already
@@ -89,7 +89,7 @@ router.post('/deposit', async (ctx, next) => {
 			// Create task to manage lifecycle and state of this task
 			let taskResponse;
 			try {
-				taskResponse = await TaskState.CreateTask({
+				taskResponse = await Twist.CreateTask({
 
 					// Actions for confirm and cancel
 					actions: {

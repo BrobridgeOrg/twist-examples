@@ -1,8 +1,8 @@
 const Router = require('koa-router');
 const Data = require('./Data');
-const TaskState = require('./task-state');
+const Twist = require('./twist');
 
-const serviceHost = 'http://127.0.0.1:3000';
+const configs = require('./configs');
 
 const router = module.exports = new Router({
 	prefix: '/api/v1'
@@ -42,19 +42,19 @@ router.post('/deduct', async (ctx, next) => {
 	// Create task to manage lifecycle and state of this task
 	let taskResponse;
 	try {
-		taskResponse = await TaskState.CreateTask({
+		taskResponse = await Twist.CreateTask({
 
 			// Actions for confirm and cancel
 			actions: {
 				confirm: {
 					type: 'rest',
 					method: 'put',
-					uri: serviceHost + '/api/v1/deduct'
+					uri: configs.serviceHost + '/api/v1/deduct'
 				},
 				cancel: {
 					type: 'rest',
 					method: 'delete',
-					uri: serviceHost + '/api/v1/deduct'
+					uri: configs.serviceHost + '/api/v1/deduct'
 				}
 			},
 			payload: JSON.stringify(taskState),
@@ -78,7 +78,7 @@ router.put('/deduct', async (ctx, next) => {
 
 	try {
 		// Getting task state
-		let task = await TaskState.GetTask(ctx.headers['twist-task-id']);
+		let task = await Twist.GetTask(ctx.headers['twist-task-id']);
 		let taskState = JSON.parse(task.payload);
 
 		// Execute
@@ -106,7 +106,7 @@ router.delete('/deduct', async (ctx, next) => {
 
 	try {
 		// Getting task state
-		let task = await TaskState.GetTask(ctx.headers['twist-task-id']);
+		let task = await Twist.GetTask(ctx.headers['twist-task-id']);
 		let taskState = JSON.parse(task.payload);
 		let user = Data.accounts[taskState.user];
 

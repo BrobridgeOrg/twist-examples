@@ -13,13 +13,19 @@ npm install
 Then start service via npm command:
 
 ```shell
-npm start
+npm run server
 ```
 
 ## Demo
 
-There is a client to trigger the transaction for a demo. It will transfer money from `fred` to `armani` wallet.
+There is a client to create a transaction to transfer money from `fred` to `armani` wallet.
 
 ```shell
-node client.js
+npm run client
 ```
+
+There is faster way to execute client script:
+
+ ```shell
+ node ./client/client.js
+ ```

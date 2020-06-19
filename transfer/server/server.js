@@ -3,18 +3,6 @@ const Router = require('koa-router');
 const bodyParser = require('koa-bodyparser')
 const Data = require('./Data');
 
-// Initializing database
-const createAccount = function(username, initialBalance) {
-	Data.accounts[username] = {
-		balance: initialBalance,
-		reserved: 0,
-	};
-}
-
-// Create two accounts for testing
-createAccount('fred', 5000);
-createAccount('armani', 1000);
-
 const app = new Koa();
 
 app.use(async (ctx, next) => {
@@ -32,10 +20,6 @@ const api = new Router({
 	prefix: '/api/v1'
 })
 
-api.get('/wallets', async (ctx, next) => {
-	ctx.body = Data.accounts;
-});
-
 app
 	.use(api.routes())
 	.use(api.allowedMethods())
@@ -43,5 +27,10 @@ app
 	.use(deduct.allowedMethods())
 	.use(deposit.routes())
 	.use(deposit.allowedMethods())
+
+// Wallet information
+api.get('/wallets', async (ctx, next) => {
+	ctx.body = Data.accounts;
+});
 
 app.listen(3000);

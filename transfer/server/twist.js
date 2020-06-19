@@ -1,11 +1,10 @@
 const fetch = require('node-fetch');
-
-const twistHost = 'http://127.0.0.1:45555';
+const configs = require('./configs');
 
 async function CreateTask(task) {
 
 	try {
-		let res = await fetch(twistHost + '/api/v1/tasks', {
+		let res = await fetch(configs.twistHost + '/api/v1/tasks', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -27,7 +26,7 @@ async function CreateTask(task) {
 async function GetTask(taskID) {
 
 	try {
-		let res = await fetch(twistHost + '/api/v1/tasks/' + taskID, {
+		let res = await fetch(configs.twistHost + '/api/v1/tasks/' + taskID, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
@@ -46,7 +45,7 @@ async function GetTask(taskID) {
 async function CancelTask(taskID) {
 
 	try {
-		let res = await fetch(twistHost + '/api/v1/tasks/' + taskID, {
+		let res = await fetch(configs.twistHost + '/api/v1/tasks/' + taskID, {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json',
