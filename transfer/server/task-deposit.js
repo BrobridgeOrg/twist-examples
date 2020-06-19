@@ -2,7 +2,7 @@ const Router = require('koa-router');
 const Data = require('./Data');
 const Twist = require('./twist');
 
-const serviceHost = 'http://127.0.0.1:3000';
+const configs = require('./configs');
 
 const router = module.exports = new Router({
 	prefix: '/api/v1'
@@ -10,6 +10,7 @@ const router = module.exports = new Router({
 
 router.post('/deposit', async (ctx, next) => {
 
+	// Perform action according to phrase: try, confirm and cancel
 	switch(ctx.headers['twist-phrase']) {
 		case 'confirm':
 
@@ -22,7 +23,7 @@ router.post('/deposit', async (ctx, next) => {
 				let task = await Twist.GetTask(ctx.headers['twist-task-id']);
 				let taskState = JSON.parse(task.payload);
 
-				// Execute
+				// Execute to update database
 				let user = Data.accounts[taskState.user];
 				user.balance += taskState.balance;
 
@@ -96,15 +97,16 @@ router.post('/deposit', async (ctx, next) => {
 						confirm: {
 							type: 'rest',
 							method: 'post',
-							uri: serviceHost + '/api/v1/deposit'
+							uri: configs.serviceHost + '/api/v1/deposit'
 						},
 						cancel: {
 							type: 'rest',
 							method: 'post',
-							uri: serviceHost + '/api/v1/deposit'
+							uri: configs.serviceHost + '/api/v1/deposit'
 						}
 					},
-					payload: JSON.stringify(taskState)
+					payload: JSON.stringify(taskState),
+					timeout: 30000,
 				})
 			} catch(e) {
 				console.log(e)

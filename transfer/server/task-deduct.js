@@ -81,7 +81,7 @@ router.put('/deduct', async (ctx, next) => {
 		let task = await Twist.GetTask(ctx.headers['twist-task-id']);
 		let taskState = JSON.parse(task.payload);
 
-		// Execute
+		// Execute to update database
 		let user = Data.accounts[taskState.user];
 		user.balance -= taskState.balance;
 		user.reserved -= taskState.balance;
