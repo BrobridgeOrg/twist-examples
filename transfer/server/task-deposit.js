@@ -55,6 +55,8 @@ router.post('/deposit', async (ctx, next) => {
 				if (task.status === 'CONFIRMED') {
 					let user = Data.accounts[taskState.user];
 					user.balance -= taskState.balance;
+				} else {
+					// Release resources
 				}
 
 			} catch(e) {
