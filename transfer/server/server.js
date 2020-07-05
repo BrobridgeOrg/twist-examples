@@ -1,7 +1,7 @@
 const Koa = require('koa');
 const Router = require('koa-router');
 const bodyParser = require('koa-bodyparser')
-const Data = require('./Data');
+const Data = require('./data');
 
 const app = new Koa();
 

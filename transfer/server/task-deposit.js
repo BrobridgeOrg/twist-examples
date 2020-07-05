@@ -1,5 +1,5 @@
 const Router = require('koa-router');
-const Data = require('./Data');
+const Data = require('./data');
 const Twist = require('./twist');
 
 const configs = require('./configs');
