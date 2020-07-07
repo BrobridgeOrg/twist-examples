@@ -21,7 +21,7 @@ async function createTransaction(timeout) {
 
 async function registerTasks(transactionID, task) {
 
-	console.log('Register taskss:', transactionID);
+	console.log('Register tasks:', transactionID);
 
 	let res = await fetch(configs.twistHost + '/api/v1/transactions/' + transactionID, {
 		method: 'PUT',
